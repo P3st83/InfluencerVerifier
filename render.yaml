@@ -1,0 +1,36 @@
+services:
+  # Backend API Service
+  - type: web
+    name: influencer-verifier-api
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MONGODB_URI
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+    autoDeploy: true
+
+  # Frontend Static Site
+  - type: web
+    name: influencer-verifier-frontend
+    env: static
+    region: frankfurt
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://influencer-verifier-api.onrender.com
+    autoDeploy: true 
