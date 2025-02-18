@@ -1,6 +1,6 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
-export interface IHealthClaim {
+export interface HealthClaim {
   id: string;
   text: string;
   category: string;
@@ -12,49 +12,47 @@ export interface IHealthClaim {
 }
 
 export interface IInfluencer extends Document {
+  _id: Types.ObjectId;
   name: string;
-  normalizedName: string;  // For easier searching
+  normalizedName: string;
   bio: string;
   category: string;
   trustScore: number;
   followers: number;
   yearlyRevenue: string;
-  claims: IHealthClaim[];
+  claims: HealthClaim[];
   lastUpdated: Date;
-  createdAt: Date;
 }
 
-const HealthClaimSchema = new Schema<IHealthClaim>({
-  id: { type: String, required: true },
-  text: { type: String, required: true },
-  category: { type: String, required: true },
-  verificationStatus: { 
-    type: String, 
-    enum: ['Verified', 'Questionable', 'Debunked'], 
-    required: true 
+const healthClaimSchema = new Schema({
+  id: String,
+  text: String,
+  category: String,
+  verificationStatus: {
+    type: String,
+    enum: ['Verified', 'Questionable', 'Debunked']
   },
-  trustScore: { type: Number, required: true },
-  date: { type: String, required: true },
-  analysis: { type: String, required: true },
-  scientificReference: { type: String, required: true }
+  trustScore: Number,
+  date: String,
+  analysis: String,
+  scientificReference: String
 });
 
-const InfluencerSchema = new Schema<IInfluencer>({
+const influencerSchema = new Schema<IInfluencer>({
   name: { type: String, required: true },
   normalizedName: { type: String, required: true, index: true },
-  bio: { type: String, required: true },
-  category: { type: String, required: true },
-  trustScore: { type: Number, required: true },
-  followers: { type: Number, required: true },
-  yearlyRevenue: { type: String, required: true },
-  claims: [HealthClaimSchema],
-  lastUpdated: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now }
+  bio: String,
+  category: String,
+  trustScore: Number,
+  followers: Number,
+  yearlyRevenue: String,
+  claims: [healthClaimSchema],
+  lastUpdated: { type: Date, default: Date.now }
 });
 
 // Create indexes for efficient searching
-InfluencerSchema.index({ normalizedName: 1 });
-InfluencerSchema.index({ category: 1 });
-InfluencerSchema.index({ trustScore: -1 });
+influencerSchema.index({ normalizedName: 1 });
+influencerSchema.index({ category: 1 });
+influencerSchema.index({ trustScore: -1 });
 
-export const Influencer = mongoose.model<IInfluencer>('Influencer', InfluencerSchema); 
+export const Influencer = model<IInfluencer>('Influencer', influencerSchema); 

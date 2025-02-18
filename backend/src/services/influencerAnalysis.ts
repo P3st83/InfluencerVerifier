@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { Types, Document } from 'mongoose';
 import { Request, Response } from 'express';
-import { Influencer } from '../models/Influencer';
+import { Influencer, IInfluencer } from '../models/Influencer';
+import type { HealthClaim } from '../models/Influencer';
 
 interface AnalysisResult {
   id: string;
@@ -25,17 +26,6 @@ interface InfluencerDocument extends Document {
   yearlyRevenue: string;
   claims: HealthClaim[];
   lastUpdated: Date;
-}
-
-interface HealthClaim {
-  id: string;
-  text: string;
-  category: string;
-  verificationStatus: 'Verified' | 'Questionable' | 'Debunked';
-  trustScore: number;
-  date: string;
-  analysis: string;
-  scientificReference: string;
 }
 
 // Mock data for different influencers
@@ -157,6 +147,26 @@ const mockInfluencers: Record<string, Partial<AnalysisResult>> = {
         date: new Date().toISOString(),
         analysis: 'Extensive research supports the benefits of Zone 2 training on mitochondrial function and longevity. The metabolic adaptations are well-documented in both athletic and general populations.',
         scientificReference: 'Journal of Applied Physiology (2023) - "Long-term Effects of Zone 2 Training on Mitochondrial Function" - DOI: 10.1152/jappl.2023.00123'
+      },
+      {
+        id: '2',
+        text: 'Proper sleep hygiene and maintaining consistent sleep-wake cycles can significantly reduce the risk of neurodegenerative diseases and improve cognitive performance.',
+        category: 'Sleep',
+        verificationStatus: 'Verified',
+        trustScore: 92,
+        date: new Date().toISOString(),
+        analysis: 'Multiple longitudinal studies have demonstrated the neuroprotective effects of quality sleep and consistent circadian rhythms.',
+        scientificReference: 'Nature Neuroscience (2023) - "Sleep Quality and Neurodegenerative Disease Prevention" - DOI: 10.1038/nn.2023.789'
+      },
+      {
+        id: '3',
+        text: 'Rapamycin has potential life-extension properties through mTOR pathway modulation, but its use as a longevity drug requires careful medical supervision.',
+        category: 'Longevity',
+        verificationStatus: 'Questionable',
+        trustScore: 78,
+        date: new Date().toISOString(),
+        analysis: 'While animal studies show promising results, human data on rapamycin for longevity is still limited. Safety concerns and optimal dosing need further research.',
+        scientificReference: 'Cell Metabolism (2023) - "Rapamycin in Human Longevity: Current Evidence" - DOI: 10.1016/j.cmet.2023.05.012'
       }
     ]
   },
@@ -177,6 +187,26 @@ const mockInfluencers: Record<string, Partial<AnalysisResult>> = {
         date: new Date().toISOString(),
         analysis: 'Molecular studies consistently demonstrate sulforaphane\'s role in NRF2 activation. The downstream effects on antioxidant production and cellular protection are well-established.',
         scientificReference: 'Proceedings of the National Academy of Sciences (2023) - "Sulforaphane-Mediated NRF2 Activation and Cellular Defense" - DOI: 10.1073/pnas.2023456118'
+      },
+      {
+        id: '2',
+        text: 'Heat stress through sauna use can increase heat shock proteins and provide cardiovascular benefits similar to moderate exercise.',
+        category: 'Wellness',
+        verificationStatus: 'Verified',
+        trustScore: 89,
+        date: new Date().toISOString(),
+        analysis: 'Clinical studies support the cardiovascular and cellular stress response benefits of regular sauna use.',
+        scientificReference: 'JAMA Internal Medicine (2023) - "Cardiovascular and Molecular Effects of Heat Exposure" - DOI: 10.1001/jamainternmed.2023.4567'
+      },
+      {
+        id: '3',
+        text: 'Omega-3 fatty acids, particularly DHA, are crucial for brain development and may prevent cognitive decline in aging populations.',
+        category: 'Nutrition',
+        verificationStatus: 'Verified',
+        trustScore: 92,
+        date: new Date().toISOString(),
+        analysis: 'Extensive research supports the role of DHA in neurodevelopment and neuroprotection.',
+        scientificReference: 'Nature Reviews Neuroscience (2023) - "Omega-3 Fatty Acids in Brain Health" - DOI: 10.1038/nrn.2023.789'
       }
     ]
   }
@@ -194,8 +224,8 @@ function normalizeNameForComparison(name: string): string {
 
 export async function analyzeInfluencer(
   influencerName: string,
-  timeRange: string,
-  claimsToAnalyze: number
+  timeRange?: string,
+  claimsToAnalyze?: number
 ): Promise<AnalysisResult> {
   try {
     if (!influencerName) {
@@ -206,7 +236,7 @@ export async function analyzeInfluencer(
     const normalizedSearchName = normalizeNameForComparison(influencerName);
 
     // First, check the database
-    const dbInfluencer = await Influencer.findOne({ 
+    const dbInfluencer = await Influencer.findOne<IInfluencer>({ 
       normalizedName: normalizedSearchName 
     });
 
@@ -226,85 +256,50 @@ export async function analyzeInfluencer(
       };
     }
 
-    // Then check mock data
+    // Check mock data first for basic info
+    let influencerData: Partial<AnalysisResult> | null = null;
     for (const [key, data] of Object.entries(mockInfluencers)) {
       if (key === 'unknown') continue;
       
       if (normalizeNameForComparison(key) === normalizedSearchName || 
           normalizeNameForComparison(data.name || '') === normalizedSearchName) {
-        console.log('Found in mock data, saving to database:', key);
-        const mockData = {
-          ...data as AnalysisResult,
-          normalizedName: normalizedSearchName,
-          lastUpdated: new Date(),
-          id: undefined
-        };
-        
-        // Save mock data to database
-        const influencer = new Influencer(mockData);
-        await influencer.save();
-        
-        return {
-          ...mockData,
-          id: influencer._id.toString()
-        };
+        influencerData = { ...data as AnalysisResult };
+        break;
       }
     }
 
-    // If not found, try API
-    console.log('Not found in database or mock data, attempting API call...');
-
-    const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
-    if (!perplexityApiKey) {
-      console.log('No API key found, falling back to unknown influencer');
-      return {
+    // If not found in mock data, use unknown template
+    if (!influencerData) {
+      influencerData = {
         ...mockInfluencers['unknown'] as AnalysisResult,
-        id: Math.random().toString(36).substring(7)
+        name: influencerName
       };
     }
 
+    // Use Perplexity API to analyze real claims
     try {
-      console.log('Making API call with key:', perplexityApiKey.substring(0, 10) + '...');
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      if (!perplexityApiKey) {
+        throw new Error('Perplexity API key not found');
+      }
+
       const response = await axios.post(
         'https://api.perplexity.ai/chat/completions',
         {
           model: "sonar-pro",
           messages: [{
             role: "system",
-            content: "You are a precise JSON generator that analyzes health influencers. Focus on extracting multiple evidence-based claims with proper scientific references. Output only valid JSON without any additional text or reasoning."
+            content: `You are an AI system analyzing health influencers. Extract and verify their most significant health claims from available content. Focus on scientific accuracy and evidence-based analysis.`
           }, {
             role: "user",
-            content: `Analyze ${influencerName} and output a JSON object with these exact fields (no additional commentary). Include at least 3-5 significant claims:
-{
-  "name": "full name",
-  "bio": "short bio focusing on credentials",
-  "category": "main health category",
-  "trustScore": number between 0-100,
-  "followers": estimated follower count,
-  "yearlyRevenue": "estimated yearly revenue with $ prefix",
-  "claims": [
-    {
-      "id": "1",
-      "text": "specific health claim with quantifiable results if possible",
-      "category": "Mental Health | Nutrition | Exercise | Sleep | Wellness",
-      "verificationStatus": "Verified" or "Questionable" or "Debunked",
-      "trustScore": number between 0-100,
-      "date": "2024-02-16T00:00:00.000Z",
-      "analysis": "concise scientific analysis with focus on evidence quality",
-      "scientificReference": "Journal Name (Year) - Full Paper Title - DOI number"
-    },
-    {
-      "id": "2",
-      "text": "another specific health claim",
-      "category": "choose from categories above",
-      "verificationStatus": "Verified" or "Questionable" or "Debunked",
-      "trustScore": number between 0-100,
-      "date": "2024-02-16T00:00:00.000Z",
-      "analysis": "concise scientific analysis",
-      "scientificReference": "Journal Name (Year) - Full Paper Title - DOI number"
-    }
-  ]
-}`
+            content: `Analyze health influencer: "${influencerName}"
+            Time range: ${timeRange || 'recent'}
+            Number of claims to analyze: ${claimsToAnalyze || 5}
+            
+            Return a JSON object with:
+            1. Key health claims they've made
+            2. Scientific verification of each claim
+            3. References to peer-reviewed research`
           }],
           max_tokens: 4000,
           temperature: 0.1
@@ -317,65 +312,32 @@ export async function analyzeInfluencer(
         }
       );
 
-      console.log('API Response Status:', response.status);
-      console.log('API Response Headers:', response.headers);
-      console.log('API Response Data:', JSON.stringify(response.data, null, 2));
-
-      if (!response.data?.choices?.[0]?.message?.content) {
-        console.log('Invalid API response format, falling back to unknown influencer');
-        return {
-          ...mockInfluencers['unknown'] as AnalysisResult,
-          id: Math.random().toString(36).substring(7)
-        };
-      }
-
-      try {
-        const aiResponse = JSON.parse(response.data.choices[0].message.content);
-        console.log('Successfully parsed AI response');
-        
-        // Validate the required fields
-        if (!aiResponse.name || !aiResponse.bio || !aiResponse.category || 
-            !aiResponse.trustScore || !aiResponse.followers || 
-            !aiResponse.yearlyRevenue || !Array.isArray(aiResponse.claims)) {
-          console.log('Missing required fields in API response, falling back to unknown influencer');
-          return {
-            ...mockInfluencers['unknown'] as AnalysisResult,
-            id: Math.random().toString(36).substring(7)
-          };
+      if (response.data?.choices?.[0]?.message?.content) {
+        const apiAnalysis = JSON.parse(response.data.choices[0].message.content);
+        if (apiAnalysis.claims && Array.isArray(apiAnalysis.claims)) {
+          influencerData.claims = apiAnalysis.claims;
         }
-
-        // After successful API call, save to database
-        console.log('Saving API response to database');
-        const influencer = new Influencer({
-          ...aiResponse,
-          normalizedName: normalizedSearchName,
-          lastUpdated: new Date()
-        });
-        await influencer.save();
-        
-        return {
-          ...aiResponse,
-          id: influencer._id.toString()
-        };
-      } catch (parseError) {
-        console.error('Error parsing AI response:', parseError);
-        return {
-          ...mockInfluencers['unknown'] as AnalysisResult,
-          id: Math.random().toString(36).substring(7)
-        };
       }
-    } catch (error: any) {
-      console.error('Error in API call:', error);
-      return {
-        ...mockInfluencers['unknown'] as AnalysisResult,
-        id: Math.random().toString(36).substring(7)
-      };
+    } catch (error) {
+      console.error('Error using Perplexity API:', error);
+      // Fall back to mock claims if API fails
     }
+
+    // Save to database
+    const dataToSave = {
+      ...influencerData,
+      normalizedName: normalizedSearchName,
+      lastUpdated: new Date()
+    };
+    
+    const influencer = await Influencer.create(dataToSave) as IInfluencer;
+    
+    return {
+      ...dataToSave as AnalysisResult,
+      id: influencer._id.toString()
+    };
   } catch (error: any) {
     console.error('Error in analyzeInfluencer:', error);
-    return {
-      ...mockInfluencers['unknown'] as AnalysisResult,
-      id: Math.random().toString(36).substring(7)
-    };
+    throw error;
   }
 } 

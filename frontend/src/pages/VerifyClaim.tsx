@@ -52,6 +52,14 @@ export default function VerifyClaim() {
     'Cochrane Library'
   ]);
 
+  const handleSelectAll = () => {
+    setSelectedJournals([...AVAILABLE_JOURNALS]);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedJournals([]);
+  };
+
   const toggleJournal = (journal: string) => {
     setSelectedJournals(prev => 
       prev.includes(journal)
@@ -168,6 +176,22 @@ export default function VerifyClaim() {
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Scientific Journals to Check ({selectedJournals.length} selected)
                 </label>
+                <div className="flex justify-end space-x-4 mb-2">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="text-sm text-accent-green hover:text-accent-green/80"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="text-sm text-gray-400 hover:text-gray-300"
+                  >
+                    Deselect All
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {AVAILABLE_JOURNALS.map((journal) => (
                     <button

@@ -166,25 +166,29 @@ export default function InfluencerDetails() {
   return (
     <div className="space-y-8">
       <div className="card">
-        <div className="sm:flex sm:items-center sm:space-x-8">
-          <div className="mb-4 flex-shrink-0 sm:mb-0 sm:mr-4">
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center space-x-4">
             {influencer.profileImage ? (
               <img 
                 src={influencer.profileImage} 
                 alt={influencer.name} 
-                className="h-24 w-24 rounded-full object-cover"
+                className="h-16 w-16 rounded-full object-cover"
               />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-navy-light" />
+              <div className="h-16 w-16 rounded-full bg-navy flex items-center justify-center">
+                <span className="text-2xl text-accent-green">
+                  {influencer.name.charAt(0)}
+                </span>
+              </div>
             )}
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-white">{influencer.name || 'Unknown Influencer'}</h1>
-            <p className="text-sm text-gray-400">{influencer.bio}</p>
-            <div className="mt-4">
-              <span className="inline-flex items-center rounded-full bg-navy-light px-3 py-0.5 text-sm font-medium text-gray-300">
-                {influencer.category}
-              </span>
+            <div>
+              <h1 className="text-3xl font-bold text-white">{influencer.name}</h1>
+              <p className="text-lg text-gray-400 mt-1">{influencer.bio}</p>
+              <div className="mt-2">
+                <span className="inline-flex items-center rounded-full bg-accent-green/10 px-3 py-1 text-sm font-medium text-accent-green">
+                  {influencer.category}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -238,7 +242,16 @@ export default function InfluencerDetails() {
             </div>
             <div className="ml-5">
               <p className="text-sm font-medium text-gray-400">Yearly Revenue</p>
-              <p className="text-2xl font-bold text-white">{influencer.yearlyRevenue || 'N/A'}</p>
+              <p className="text-2xl font-bold text-white truncate">
+                {influencer.yearlyRevenue ? 
+                  new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'USD',
+                    notation: 'compact',
+                    maximumFractionDigits: 1
+                  }).format(Number(influencer.yearlyRevenue.replace(/[^0-9.-]+/g,"")))
+                  : 'N/A'}
+              </p>
             </div>
           </div>
         </div>

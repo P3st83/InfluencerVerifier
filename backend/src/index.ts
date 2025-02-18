@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
@@ -50,7 +50,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Routes
-app.get('/api/influencers', async (req, res) => {
+app.get('/api/influencers', async (req: Request, res: Response) => {
   try {
     const influencers = await Influencer.find({})
       .sort({ trustScore: -1 })
@@ -61,7 +61,7 @@ app.get('/api/influencers', async (req, res) => {
   }
 });
 
-app.post('/api/analyze-influencer', async (req, res) => {
+app.post('/api/analyze-influencer', async (req: Request, res: Response) => {
   try {
     const { influencerName, timeRange, claimsToAnalyze } = req.body;
 
@@ -80,7 +80,7 @@ app.post('/api/analyze-influencer', async (req, res) => {
   }
 });
 
-app.post('/api/verify-claims', async (req, res) => {
+app.post('/api/verify-claims', async (req: Request, res: Response) => {
   try {
     const { claims, journals } = req.body;
     const verificationResults = await verifyHealthClaims(claims, journals);
@@ -91,7 +91,7 @@ app.post('/api/verify-claims', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy' });
 });
 

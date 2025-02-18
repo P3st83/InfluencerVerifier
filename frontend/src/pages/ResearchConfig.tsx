@@ -47,6 +47,48 @@ export default function ResearchConfig() {
 
   const timeRanges = ['Last Week', 'Last Month', 'Last Year', 'All Time'];
 
+  const handleSelectAll = () => {
+    setSelectedJournals([
+      'PubMed Central',
+      'Science',
+      'The Lancet',
+      'JAMA Network',
+      'Nature',
+      'Cell',
+      'New England Journal of Medicine',
+      'Journal of Functional Medicine',
+      'Integrative Medicine: A Clinician\'s Journal',
+      'Alternative Therapies in Health and Medicine',
+      'Journal of Alternative and Complementary Medicine',
+      'BMC Complementary Medicine and Therapies',
+      'Explore: The Journal of Science and Healing',
+      'Functional Foods in Health and Disease',
+      'Journal of Clinical Functional Medicine',
+      'International Journal of Functional Nutrition',
+      'Global Advances in Health and Medicine',
+      'Journal of Restorative Medicine',
+      'Integrative Medicine Research',
+      'Natural Medicine Journal',
+      'Environmental Health Perspectives',
+      'Nutrients',
+      'Journal of Nutrition and Metabolism',
+      'Frontiers in Nutrition',
+      'American Journal of Lifestyle Medicine'
+    ]);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedJournals([]);
+  };
+
+  const toggleJournal = (journal: string) => {
+    setSelectedJournals(prev => 
+      prev.includes(journal)
+        ? prev.filter(j => j !== journal)
+        : [...prev, journal]
+    );
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSearchConfig(prev => ({
@@ -76,13 +118,17 @@ export default function ResearchConfig() {
         productsToFind: searchConfig.productsToFind
       });
 
-      // Format the name for the URL
-      const urlFormattedName = influencerNameToSearch
-        .toLowerCase()
-        .replace(/\s+/g, '-');
+      if (response.data) {
+        // Format the name for the URL
+        const urlFormattedName = influencerNameToSearch
+          .toLowerCase()
+          .replace(/\s+/g, '-');
 
-      // Navigate to the influencer details page
-      navigate(`/influencer/${encodeURIComponent(urlFormattedName)}`);
+        // Navigate to the influencer details page
+        navigate(`/influencer/${encodeURIComponent(urlFormattedName)}`);
+      } else {
+        throw new Error('No data received from analysis');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze influencer');
     } finally {
@@ -259,16 +305,29 @@ export default function ResearchConfig() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-white">Scientific Journals</h3>
                 <div className="space-x-4">
-                  <button type="button" className="text-xs text-accent-green hover:text-accent-green/80">Select All</button>
-                  <button type="button" className="text-xs text-gray-400 hover:text-gray-300">Deselect All</button>
+                  <button type="button" className="text-xs text-accent-green hover:text-accent-green/80" onClick={handleSelectAll}>Select All</button>
+                  <button type="button" className="text-xs text-gray-400 hover:text-gray-300" onClick={handleDeselectAll}>Deselect All</button>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {selectedJournals.map((journal) => (
-                  <div key={journal} className="journal-card">
+                  <button
+                    key={journal}
+                    type="button"
+                    onClick={() => toggleJournal(journal)}
+                    className={`journal-card ${
+                      selectedJournals.includes(journal) 
+                        ? 'border-accent-green' 
+                        : 'border-navy-light hover:border-accent-green'
+                    }`}
+                  >
                     <span className="text-sm text-white">{journal}</span>
-                    <div className="journal-card-check" />
-                  </div>
+                    <div className={`journal-card-check ${
+                      selectedJournals.includes(journal) 
+                        ? 'bg-accent-green/20' 
+                        : 'bg-accent-green/10'
+                    }`} />
+                  </button>
                 ))}
                 <button type="button" className="journal-card text-accent-green border-dashed">
                   <span className="flex items-center">
