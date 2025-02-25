@@ -226,118 +226,134 @@ export async function analyzeInfluencer(
   influencerName: string,
   timeRange?: string,
   claimsToAnalyze?: number
-): Promise<AnalysisResult> {
+): Promise<AnalysisResult | { error: string }> {
+  console.log(`Analyzing influencer: ${influencerName}`);
+  const normalizedSearchName = normalizeNameForComparison(influencerName);
+  console.log(`Using normalized name for search: ${normalizedSearchName}`);
+
   try {
-    if (!influencerName) {
-      throw new Error('Influencer name is required');
-    }
-
-    console.log('Analyzing influencer:', influencerName);
-    const normalizedSearchName = normalizeNameForComparison(influencerName);
-
-    // First, check the database
-    const dbInfluencer = await Influencer.findOne<IInfluencer>({ 
-      normalizedName: normalizedSearchName 
-    });
-
-    // If found in database and less than 1 week old, return it
-    if (dbInfluencer && 
-        (Date.now() - dbInfluencer.lastUpdated.getTime()) < 7 * 24 * 60 * 60 * 1000) {
-      console.log('Found recent data in database');
-      return {
-        id: dbInfluencer._id.toString(),
-        name: dbInfluencer.name,
-        bio: dbInfluencer.bio,
-        category: dbInfluencer.category,
-        trustScore: dbInfluencer.trustScore,
-        followers: dbInfluencer.followers,
-        yearlyRevenue: dbInfluencer.yearlyRevenue,
-        claims: dbInfluencer.claims
-      };
-    }
-
-    // Check mock data first for basic info
-    let influencerData: Partial<AnalysisResult> | null = null;
-    for (const [key, data] of Object.entries(mockInfluencers)) {
-      if (key === 'unknown') continue;
+    // Check database for existing data
+    console.log('Checking database for existing data...');
+    const dbInfluencer = await Influencer.findOne<IInfluencer>({ normalizedName: normalizedSearchName });
+    
+    if (dbInfluencer) {
+      console.log('Database check result: Found');
+      const age = (new Date().getTime() - dbInfluencer.lastUpdated.getTime()) / (1000 * 60 * 60 * 24);
       
-      if (normalizeNameForComparison(key) === normalizedSearchName || 
-          normalizeNameForComparison(data.name || '') === normalizedSearchName) {
-        influencerData = { ...data as AnalysisResult };
-        break;
+      if (age < 7) {
+        console.log('Returning recent data from database (less than 7 days old)');
+        return {
+          id: dbInfluencer._id.toString(),
+          name: dbInfluencer.name,
+          trustScore: dbInfluencer.trustScore,
+          claims: dbInfluencer.claims,
+          category: dbInfluencer.category,
+          followers: dbInfluencer.followers,
+          yearlyRevenue: dbInfluencer.yearlyRevenue,
+          bio: dbInfluencer.bio
+        };
       }
+      console.log('Data is older than 7 days, fetching new data');
+    } else {
+      console.log('No existing data found in database');
     }
 
-    // If not found in mock data, use unknown template
-    if (!influencerData) {
-      influencerData = {
-        ...mockInfluencers['unknown'] as AnalysisResult,
-        name: influencerName
-      };
+    // Call Perplexity API for analysis
+    const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+    if (!perplexityApiKey) {
+      throw new Error('Perplexity API key not found');
     }
 
-    // Use Perplexity API to analyze real claims
+    const response = await axios.post(
+      'https://api.perplexity.ai/chat/completions',
+      {
+        model: "sonar-pro",
+        messages: [{
+          role: "system",
+          content: `You are an AI system analyzing health influencers. For the given influencer, find and analyze their recent health claims, focusing on scientific accuracy and evidence-based verification. Return a JSON object with the analysis results.`
+        }, {
+          role: "user",
+          content: `Analyze the health influencer "${influencerName}" and their recent claims. Focus on the last ${timeRange || 'month'}.
+          
+          Return ONLY a JSON object in this format:
+          {
+            "name": "Full Name",
+            "bio": "Brief professional description",
+            "category": "Specialization area",
+            "trustScore": number (0-100),
+            "followers": number,
+            "yearlyRevenue": "Estimated yearly revenue",
+            "claims": [{
+              "id": "unique_id",
+              "text": "The claim statement",
+              "category": "Claim category",
+              "verificationStatus": "Verified" | "Questionable" | "Debunked",
+              "trustScore": number (0-100),
+              "date": "YYYY-MM-DD",
+              "analysis": "Detailed analysis",
+              "scientificReference": "Journal reference with DOI"
+            }]
+          }`
+        }],
+        max_tokens: 4000,
+        temperature: 0.1
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${perplexityApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.data?.choices?.[0]?.message?.content) {
+      throw new Error('Invalid API response format');
+    }
+
     try {
-      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
-      if (!perplexityApiKey) {
-        throw new Error('Perplexity API key not found');
+      const result = JSON.parse(response.data.choices[0].message.content);
+      
+      // Check if the API returned an error message
+      if (typeof result === 'string' && result.toLowerCase().includes('apologize')) {
+        return {
+          error: result
+        };
       }
 
-      const response = await axios.post(
-        'https://api.perplexity.ai/chat/completions',
-        {
-          model: "sonar-pro",
-          messages: [{
-            role: "system",
-            content: `You are an AI system analyzing health influencers. Extract and verify their most significant health claims from available content. Focus on scientific accuracy and evidence-based analysis.`
-          }, {
-            role: "user",
-            content: `Analyze health influencer: "${influencerName}"
-            Time range: ${timeRange || 'recent'}
-            Number of claims to analyze: ${claimsToAnalyze || 5}
-            
-            Return a JSON object with:
-            1. Key health claims they've made
-            2. Scientific verification of each claim
-            3. References to peer-reviewed research`
-          }],
-          max_tokens: 4000,
-          temperature: 0.1
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${perplexityApiKey}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data?.choices?.[0]?.message?.content) {
-        const apiAnalysis = JSON.parse(response.data.choices[0].message.content);
-        if (apiAnalysis.claims && Array.isArray(apiAnalysis.claims)) {
-          influencerData.claims = apiAnalysis.claims;
-        }
+      // Validate the response format
+      if (!result.name || !result.category || !Array.isArray(result.claims)) {
+        throw new Error('Invalid response format from API');
       }
-    } catch (error) {
-      console.error('Error using Perplexity API:', error);
-      // Fall back to mock claims if API fails
+
+      // Save to database
+      const influencer = new Influencer({
+        name: result.name,
+        normalizedName: normalizeNameForComparison(result.name),
+        bio: result.bio,
+        category: result.category,
+        trustScore: result.trustScore,
+        followers: result.followers,
+        yearlyRevenue: result.yearlyRevenue,
+        claims: result.claims,
+        lastUpdated: new Date()
+      });
+
+      await influencer.save();
+      
+      return result;
+    } catch (parseError) {
+      console.error('Error parsing API response:', parseError);
+      if (response.data.choices[0].message.content.includes('apologize')) {
+        return {
+          error: response.data.choices[0].message.content
+        };
+      }
+      throw new Error('Failed to parse API response');
     }
-
-    // Save to database
-    const dataToSave = {
-      ...influencerData,
-      normalizedName: normalizedSearchName,
-      lastUpdated: new Date()
-    };
-    
-    const influencer = await Influencer.create(dataToSave) as IInfluencer;
-    
-    return {
-      ...dataToSave as AnalysisResult,
-      id: influencer._id.toString()
-    };
   } catch (error: any) {
     console.error('Error in analyzeInfluencer:', error);
-    throw error;
+    return {
+      error: error.message || 'Failed to analyze influencer'
+    };
   }
 } 

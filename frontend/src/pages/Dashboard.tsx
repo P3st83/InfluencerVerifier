@@ -37,25 +37,44 @@ export default function Dashboard() {
 
         // Fetch all influencers from the database
         const response = await axios.get('http://localhost:3001/api/influencers');
-        const influencerData = response.data.map((influencer: any) => ({
-          id: influencer.id,
-          name: influencer.name,
-          category: influencer.category,
-          trustScore: influencer.trustScore,
-          trend: 'up' as const,
-          followers: influencer.followers,
-          verifiedClaims: influencer.claims.filter((claim: any) => claim.verificationStatus === 'Verified').length
-        }));
+        
+        // Create a map to aggregate influencers by normalized name
+        const influencerMap = new Map();
+        
+        response.data.forEach((influencer: any) => {
+          const normalizedName = influencer.name.toLowerCase();
+          
+          if (influencerMap.has(normalizedName)) {
+            // If influencer exists, merge their claims
+            const existing = influencerMap.get(normalizedName);
+            existing.claims = [...existing.claims, ...influencer.claims];
+            existing.verifiedClaims = existing.claims.filter((claim: any) => claim.verificationStatus === 'Verified').length;
+          } else {
+            // If new influencer, add them to the map
+            influencerMap.set(normalizedName, {
+              id: influencer.id,
+              name: influencer.name,
+              category: influencer.category,
+              trustScore: influencer.trustScore,
+              trend: 'up' as const,
+              followers: influencer.followers,
+              claims: influencer.claims,
+              verifiedClaims: influencer.claims.filter((claim: any) => claim.verificationStatus === 'Verified').length
+            });
+          }
+        });
 
-        // Sort by trust score
-        const sortedInfluencers = influencerData.sort((a: any, b: any) => b.trustScore - a.trustScore);
+        // Convert map to array and sort by trust score
+        const sortedInfluencers = Array.from(influencerMap.values())
+          .sort((a: any, b: any) => b.trustScore - a.trustScore);
+
         setInfluencers(sortedInfluencers);
 
         // Calculate stats
         const totalInfluencers = sortedInfluencers.length;
-        const totalClaims = sortedInfluencers.reduce((acc, inf) => acc + inf.verifiedClaims, 0);
+        const totalClaims = sortedInfluencers.reduce((acc: number, inf: Influencer) => acc + inf.verifiedClaims, 0);
         const averageScore = Math.round(
-          sortedInfluencers.reduce((acc, inf) => acc + inf.trustScore, 0) / totalInfluencers
+          sortedInfluencers.reduce((acc: number, inf: Influencer) => acc + inf.trustScore, 0) / totalInfluencers
         );
 
         setStats({
@@ -175,8 +194,15 @@ export default function Dashboard() {
                                 .toLowerCase()
                                 .replace(/\s+/g, '-')
                             )}`}
-                            className="text-accent-green hover:text-accent-green/80"
+                            className="text-accent-green hover:text-accent-green/80 flex items-center gap-3"
                           >
+                            <div className="h-8 w-8 rounded-full bg-navy flex items-center justify-center">
+                              <span className="text-sm text-accent-green">
+                                {influencer.name.split(' ')
+                                  .map(word => word.charAt(0))
+                                  .join('')}
+                              </span>
+                            </div>
                             {influencer.name}
                           </Link>
                         </td>

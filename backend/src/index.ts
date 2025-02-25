@@ -13,9 +13,16 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Connect to MongoDB
+console.log('Attempting to connect to MongoDB...');
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/influencer-verifier')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => {
+    console.log('Successfully connected to MongoDB');
+    console.log('Database connection string:', process.env.MONGODB_URI?.replace(/mongodb\+srv:\/\/[^:]+:[^@]+@/, 'mongodb+srv://[hidden]@'));
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);  // Exit if we can't connect to the database
+  });
 
 // CORS configuration
 const allowedOrigins = [

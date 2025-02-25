@@ -83,15 +83,20 @@ export default function InfluencerDetails() {
           claimsToAnalyze: 50
         });
 
-        // Only set error if it's truly unknown
-        if (response.data.name === 'Unknown Influencer' && 
-            normalizeNameForComparison(decodedName) !== normalizeNameForComparison('Unknown Influencer')) {
-          setError(`Could not find influencer "${decodedName}". Please try another name.`);
+        // Check if the response contains an error message from the API
+        if (response.data.error) {
+          setError(response.data.error);
           return;
         }
 
-        // Log the response data for debugging
-        console.log('Response data:', response.data);
+        // Check if there are no claims
+        if (response.data.claims && response.data.claims.length === 0) {
+          setError('No recent health claims found for this influencer. This could be because: \n\n' +
+                  '1. The influencer has not made any health-related claims recently\n' +
+                  '2. Their content is not publicly accessible\n' +
+                  '3. The content requires additional permissions to access');
+          return;
+        }
 
         setInfluencer(response.data);
       } catch (err: any) {
@@ -117,12 +122,14 @@ export default function InfluencerDetails() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-400">{error}</p>
+        <div className="text-center max-w-2xl mx-auto">
+          <h2 className="text-xl font-semibold text-white mb-4">Unable to Analyze Influencer</h2>
+          <div className="bg-navy-light rounded-lg p-6 mb-6">
+            <p className="text-gray-400 whitespace-pre-line">{error}</p>
+          </div>
           <button 
             onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-accent-green text-white rounded hover:bg-accent-green/90"
+            className="px-4 py-2 bg-accent-green text-white rounded hover:bg-accent-green/90"
           >
             Go Back
           </button>
@@ -177,7 +184,9 @@ export default function InfluencerDetails() {
             ) : (
               <div className="h-16 w-16 rounded-full bg-navy flex items-center justify-center">
                 <span className="text-2xl text-accent-green">
-                  {influencer.name.charAt(0)}
+                  {influencer.name.split(' ')
+                    .map(word => word.charAt(0))
+                    .join('')}
                 </span>
               </div>
             )}
