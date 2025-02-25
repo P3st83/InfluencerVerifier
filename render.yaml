@@ -23,7 +23,6 @@ services:
   - type: web
     name: influencer-verifier-frontend
     env: static
-    region: frankfurt
     buildCommand: npm install && cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     routes:
