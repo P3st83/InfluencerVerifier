@@ -24,7 +24,7 @@ services:
     name: influencer-verifier-frontend
     env: static
     region: frankfurt
-    buildCommand: cd frontend && npm install && npm run build
+    buildCommand: npm install && cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     routes:
       - type: rewrite
