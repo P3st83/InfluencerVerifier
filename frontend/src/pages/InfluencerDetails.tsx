@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { ChartBarIcon, BeakerIcon, ShoppingBagIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
@@ -51,7 +51,6 @@ function getJournalUrl(doi: string): string {
 
 export default function InfluencerDetails() {
   const { name } = useParams<{ name: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -78,7 +77,7 @@ export default function InfluencerDetails() {
         console.log('Searching for influencer:', decodedName);
         
         const response = await axios.post('http://localhost:3001/api/analyze-influencer', {
-          influencerName: decodedName,
+          influencerName: normalizeNameForComparison(name),
           timeRange: 'Last Month',
           claimsToAnalyze: 50
         });

@@ -183,7 +183,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {influencers.map((influencer, index) => (
-                      <tr key={influencer.id}>
+                      <tr key={influencer.id || index}>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-0">
                           #{index + 1}
                         </td>
@@ -199,7 +199,7 @@ export default function Dashboard() {
                             <div className="h-8 w-8 rounded-full bg-navy flex items-center justify-center">
                               <span className="text-sm text-accent-green">
                                 {influencer.name.split(' ')
-                                  .map(word => word.charAt(0))
+                                  .map((word, index) => word.charAt(0))
                                   .join('')}
                               </span>
                             </div>

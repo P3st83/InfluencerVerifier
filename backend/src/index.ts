@@ -28,21 +28,18 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/influence
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://p3st83.github.io'
+  'http://localhost:4173',
+  'http://localhost:4174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:4173',
+  'https://p3st83.github.io',
+  'https://influencer-verifier-frontend.onrender.com',
+  'https://influencer-verifier-api.onrender.com'
 ];
 
 // Middleware
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: allowedOrigins,
   methods: ['GET', 'POST'],
   credentials: true
 }));
