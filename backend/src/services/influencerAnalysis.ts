@@ -270,10 +270,10 @@ export async function analyzeInfluencer(
         model: "sonar-pro",
         messages: [{
           role: "system",
-          content: `You are an AI system analyzing health influencers. For the given influencer, find and analyze their recent health claims, focusing on scientific accuracy and evidence-based verification. Return a JSON object with the analysis results.`
+          content: `You are an AI system analyzing health influencers. For the given influencer, find and analyze their recent health claims, focusing on scientific accuracy and evidence-based verification. Generate at least 8-10 diverse claims from the past year, including both verified and questionable claims. Ensure the yearly revenue is a specific numerical value.`
         }, {
           role: "user",
-          content: `Analyze the health influencer "${influencerName}" and their recent claims. Focus on the last ${timeRange || 'month'}.
+          content: `Analyze the health influencer "${influencerName}" and their claims from the past year. Focus on the last ${timeRange || 'year'}.
           
           Return ONLY a JSON object in this format:
           {
@@ -282,7 +282,7 @@ export async function analyzeInfluencer(
             "category": "Specialization area",
             "trustScore": number (0-100),
             "followers": number,
-            "yearlyRevenue": "Estimated yearly revenue",
+            "yearlyRevenue": "Estimated yearly revenue (e.g. $5.2M)",
             "claims": [{
               "id": "unique_id",
               "text": "The claim statement",
@@ -290,13 +290,20 @@ export async function analyzeInfluencer(
               "verificationStatus": "Verified" | "Questionable" | "Debunked",
               "trustScore": number (0-100),
               "date": "YYYY-MM-DD",
-              "analysis": "Detailed analysis",
+              "analysis": "Detailed analysis with scientific context",
               "scientificReference": "Journal reference with DOI"
             }]
-          }`
+          }
+          
+          Important:
+          1. Generate at least 8-10 diverse claims
+          2. Include claims from different months of the past year
+          3. Mix of verified, questionable, and debunked claims
+          4. Ensure yearlyRevenue is a specific numerical value
+          5. Use real scientific papers and DOIs`
         }],
         max_tokens: 4000,
-        temperature: 0.1
+        temperature: 0.7
       },
       {
         headers: {
@@ -326,7 +333,7 @@ export async function analyzeInfluencer(
       }
 
       // Save to database
-      const influencer = new Influencer({
+      const influencerData = {
         name: result.name,
         normalizedName: normalizeNameForComparison(result.name),
         bio: result.bio,
@@ -336,9 +343,13 @@ export async function analyzeInfluencer(
         yearlyRevenue: result.yearlyRevenue,
         claims: result.claims,
         lastUpdated: new Date()
-      });
+      };
 
-      await influencer.save();
+      await Influencer.findOneAndUpdate(
+        { normalizedName: normalizeNameForComparison(result.name) },
+        influencerData,
+        { upsert: true, new: true }
+      );
       
       return result;
     } catch (parseError) {
