@@ -108,7 +108,8 @@ export default function ResearchConfig() {
         throw new Error('Please enter an influencer name');
       }
 
-      const response = await axios.post('http://localhost:3001/api/analyze-influencer', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await axios.post(`${apiUrl}/api/analyze-influencer`, {
         influencerName: influencerNameToSearch,
         timeRange: selectedTimeRange,
         claimsToAnalyze: searchConfig.claimsToAnalyze,

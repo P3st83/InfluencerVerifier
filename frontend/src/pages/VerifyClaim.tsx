@@ -104,7 +104,8 @@ export default function VerifyClaim() {
     setResults([]);
 
     try {
-      const response = await axios.post('http://localhost:3001/api/verify-claims', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await axios.post(`${apiUrl}/api/verify-claims`, {
         claims: validClaims,
         journals: selectedJournals
       });

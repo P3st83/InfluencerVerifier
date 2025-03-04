@@ -36,7 +36,8 @@ export default function Dashboard() {
         setError(null);
 
         // Fetch all influencers from the database
-        const response = await axios.get('http://localhost:3001/api/influencers');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await axios.get(`${apiUrl}/api/influencers`);
         
         // Create a map to aggregate influencers by normalized name
         const influencerMap = new Map();
